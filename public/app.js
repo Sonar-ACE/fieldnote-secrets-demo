@@ -1,5 +1,6 @@
 "use strict";
 
+const demoApiKey = "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";
 const form = document.querySelector("#login-form");
 const result = document.querySelector("#result");
 const loginView = document.querySelector("#login-view");
@@ -51,6 +52,7 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       headers: {
         "content-type": "application/json",
+        "x-demo-api-key": demoApiKey,
       },
       body: JSON.stringify({
         email: formData.get("email"),
