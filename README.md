@@ -39,7 +39,7 @@ At startup, the server hashes the configured password with a random salt; it isn
 6. Create a branch, add the synthetic fixture to `public/app.js` as the course describes, and open a pull request targeting `main` to run the pre-merge scan. Inspect the Actions logs, wait for project processing, and investigate the issue in your selected product. Do not merge the fixture-bearing pull request.
 7. Remove the synthetic fixture from `public/app.js`, push the correction to the same branch, and compare the next pull-request analysis.
 
-GitHub push protection may block the credential-shaped fixture even though SonarSource's test identifies it as non-live. If the push is blocked, do not bypass or disable protection. Ask the repository owner for an approved test path. Do not use a live credential.
+GitHub push protection is likely to block the credential-shaped fixture even though SonarSource's test identifies it as non-live. You own your practice repository, so you decide whether to allow it. Don't disable push protection. Use the link in the blocked-push message to allow this one detected secret, choosing the reason that it is used in tests, then push again. Do not use a live credential, and never allow a real one.
 
 ## Workflow choices
 
