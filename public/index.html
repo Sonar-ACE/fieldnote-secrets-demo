@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#183e37">
+    <title>Fieldnote | Sign in</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="page-shell">
+      <aside class="brand-panel" aria-label="Fieldnote">
+        <a class="brand" href="/" aria-label="Fieldnote home">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+          <span>fieldnote</span>
+        </a>
+        <div class="brand-copy">
+          <p class="eyebrow">A CALMER PLACE TO WORK</p>
+          <h1>Make room<br>for the work<br><em>that matters.</em></h1>
+          <p class="brand-description">A simple place to keep your notes and next steps together.</p>
+        </div>
+        <div class="panel-footer">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Local demo environment</span>
+          <span class="footer-mark">FIELDNOTE / 01</span>
+        </div>
+      </aside>
+
+      <section class="form-panel" aria-labelledby="login-title">
+        <div class="form-panel-top">
+          <span class="eyebrow">FIELDNOTE</span>
+          <span class="secure-label"><span aria-hidden="true">&#9679;</span> LOCAL SIGN IN</span>
+        </div>
+
+        <section id="login-view" class="auth-content">
+          <p class="eyebrow accent-eyebrow">WELCOME BACK</p>
+          <h2 id="login-title">Sign in to Fieldnote</h2>
+          <p class="intro-copy">Use your local demo account to continue.</p>
+
+          <aside class="demo-credentials" aria-label="Demo sign-in credentials">
+            <p class="credentials-title">Demo credentials</p>
+            <dl>
+              <div>
+                <dt>Email</dt>
+                <dd><code>learner@sonar.demo</code></dd>
+              </div>
+              <div>
+                <dt>Password</dt>
+                <dd><code>local-only-demo-please-change</code></dd>
+              </div>
+            </dl>
+          </aside>
+
+          <form id="login-form" novalidate>
+            <label for="email">Email address</label>
+            <input id="email" name="email" type="email" autocomplete="username" placeholder="learner@sonar.demo" required>
+
+            <div class="password-label-row">
+              <label for="password">Password</label>
+              <button class="text-button" id="password-toggle" type="button" aria-pressed="false">Show</button>
+            </div>
+            <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+
+            <button class="submit-button" type="submit">
+              <span>Sign in</span>
+              <span class="button-arrow" aria-hidden="true">&#8594;</span>
+            </button>
+            <output id="result" class="form-result" aria-live="polite"></output>
+          </form>
+
+          <p class="demo-note"><span aria-hidden="true">i</span> Local practice app. Use the credentials shown above; never enter a real password.</p>
+        </section>
+
+        <section id="account-view" class="auth-content account-content" hidden>
+          <p class="eyebrow accent-eyebrow">FIELDNOTE</p>
+          <h2>You're signed in</h2>
+          <p class="signed-in-as">Signed in as <strong id="account-email"></strong></p>
+          <p class="auth-confirmation">Your local Fieldnote demo session is active.</p>
+          <button class="submit-button signout-button" id="logout-button" type="button">
+            <span>Sign out</span>
+            <span class="button-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+          <output id="account-result" class="form-result" aria-live="polite"></output>
+        </section>
+
+        <footer class="form-footer">
+          <span>FIELDNOTE / LOCAL ACCESS</span>
+          <span>SESSION PROTECTED</span>
+        </footer>
+      </section>
+    </main>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
