@@ -99,4 +99,4 @@ document.querySelector("#logout-button").addEventListener("click", async () => {
   }
 });
 
-loadSession();
+await loadSession();
