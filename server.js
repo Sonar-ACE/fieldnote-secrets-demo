@@ -134,28 +134,115 @@ function pruneSessions() {
   }
 }
 
+function servePublicFile(response, pathname) {
+  const [fileName, contentType] = publicFiles.get(pathname);
+  fs.readFile(path.join(publicDirectory, fileName), (error, content) => {
+    if (error) {
+      send(response, 500, "text/plain; charset=utf-8", "Unable to load the demo.");
+      return;
+    }
+    send(response, 200, contentType, content);
+  });
+}
+
+function sendSessionStatus(request, response) {
+  const authenticated = getSession(request);
+  if (!authenticated) {
+    sendJson(response, 200, { authenticated: false });
+    return;
+  }
+  sendJson(response, 200, { authenticated: true, email: authenticated.session.email });
+}
+
+function sendLogoutResponse(request, response) {
+  const authenticated = getSession(request);
+  if (authenticated) {
+    sessions.delete(authenticated.sessionId);
+  }
+  sendJson(response, 200, { message: "You are signed out." }, {
+    "set-cookie": "demo_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
+  });
+}
+
+function credentialsAreValid(credentials) {
+  return typeof credentials.email === "string"
+    && typeof credentials.password === "string"
+    && credentials.email.length <= 254
+    && credentials.password.length <= 128;
+}
+
+function authenticateCredentials(credentials) {
+  const candidatePassword = Buffer.from(credentials.password);
+  const passwordLengthMatches = candidatePassword.length === passwordBytes;
+  const candidatePasswordHash = scryptSync(credentials.password, passwordSalt, 64);
+  return credentials.email.trim().toLowerCase() === demoEmail
+    && timingSafeEqual(candidatePasswordHash, expectedPasswordHash)
+    && passwordLengthMatches;
+}
+
+function recordFailedLogin(attemptState) {
+  attemptState.failures += 1;
+  if (attemptState.failures >= 5) {
+    attemptState.blockedUntil = Date.now() + 60_000;
+    attemptState.failures = 0;
+  }
+}
+
+function createSession(response) {
+  const sessionId = randomBytes(32).toString("base64url");
+  sessions.set(sessionId, { email: demoEmail, expiresAt: Date.now() + sessionLifetimeMs });
+  sendJson(response, 200, { email: demoEmail }, {
+    "set-cookie": `demo_session=${sessionId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${sessionLifetimeMs / 1000}`,
+  });
+}
+
+async function handleLogin(request, response) {
+  const clientKey = getClientKey(request);
+  const attemptState = getAttemptState(clientKey);
+  if (attemptState.blockedUntil > Date.now()) {
+    sendJson(response, 429, { message: "Too many attempts. Wait a minute and try again." });
+    return;
+  }
+
+  let credentials;
+  try {
+    credentials = await readJson(request);
+  } catch (error) {
+    sendJson(response, error.statusCode || 400, { message: error.message });
+    return;
+  }
+
+  if (!credentialsAreValid(credentials)) {
+    sendJson(response, 400, { message: "Enter a valid email and password." });
+    return;
+  }
+
+  if (!authenticateCredentials(credentials)) {
+    recordFailedLogin(attemptState);
+    sendJson(response, 401, { message: "Email or password is incorrect." });
+    return;
+  }
+
+  loginAttempts.delete(clientKey);
+  pruneSessions();
+  if (sessions.size >= 128) {
+    sendJson(response, 503, { message: "The local demo has reached its session limit." });
+    return;
+  }
+
+  createSession(response);
+}
+
 async function handleRequest(request, response) {
   const requestUrl = new URL(request.url, `http://${host}:${port}`);
 
   if (request.method === "GET" && publicFiles.has(requestUrl.pathname)) {
-    const [fileName, contentType] = publicFiles.get(requestUrl.pathname);
-    fs.readFile(path.join(publicDirectory, fileName), (error, content) => {
-      if (error) {
-        send(response, 500, "text/plain; charset=utf-8", "Unable to load the demo.");
-        return;
-      }
-      send(response, 200, contentType, content);
-    });
+    servePublicFile(response, requestUrl.pathname);
     return;
   }
 
   if (request.method === "GET" && requestUrl.pathname === "/api/session") {
-    const authenticated = getSession(request);
-    if (!authenticated) {
-      sendJson(response, 200, { authenticated: false });
-      return;
-    }
-    sendJson(response, 200, { authenticated: true, email: authenticated.session.email });
+    sendSessionStatus(request, response);
     return;
   }
 
@@ -166,65 +253,11 @@ async function handleRequest(request, response) {
     }
 
     if (requestUrl.pathname === "/api/logout") {
-      const authenticated = getSession(request);
-      if (authenticated) {
-        sessions.delete(authenticated.sessionId);
-      }
-      sendJson(response, 200, { message: "You are signed out." }, {
-        "set-cookie": "demo_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0",
-      });
+      sendLogoutResponse(request, response);
       return;
     }
 
-    const clientKey = getClientKey(request);
-    const attemptState = getAttemptState(clientKey);
-    if (attemptState.blockedUntil > Date.now()) {
-      sendJson(response, 429, { message: "Too many attempts. Wait a minute and try again." });
-      return;
-    }
-
-    let credentials;
-    try {
-      credentials = await readJson(request);
-    } catch (error) {
-      sendJson(response, error.statusCode || 400, { message: error.message });
-      return;
-    }
-
-    if (typeof credentials.email !== "string" || typeof credentials.password !== "string"
-      || credentials.email.length > 254 || credentials.password.length > 128) {
-      sendJson(response, 400, { message: "Enter a valid email and password." });
-      return;
-    }
-
-    const candidatePassword = Buffer.from(credentials.password);
-    const passwordLengthMatches = candidatePassword.length === passwordBytes;
-    const candidatePasswordHash = scryptSync(credentials.password, passwordSalt, 64);
-    const passwordMatches = timingSafeEqual(candidatePasswordHash, expectedPasswordHash) && passwordLengthMatches;
-    const emailMatches = credentials.email.trim().toLowerCase() === demoEmail;
-
-    if (!emailMatches || !passwordMatches) {
-      attemptState.failures += 1;
-      if (attemptState.failures >= 5) {
-        attemptState.blockedUntil = Date.now() + 60_000;
-        attemptState.failures = 0;
-      }
-      sendJson(response, 401, { message: "Email or password is incorrect." });
-      return;
-    }
-
-    loginAttempts.delete(clientKey);
-    pruneSessions();
-    if (sessions.size >= 128) {
-      sendJson(response, 503, { message: "The local demo has reached its session limit." });
-      return;
-    }
-
-    const sessionId = randomBytes(32).toString("base64url");
-    sessions.set(sessionId, { email: demoEmail, expiresAt: Date.now() + sessionLifetimeMs });
-    sendJson(response, 200, { email: demoEmail }, {
-      "set-cookie": `demo_session=${sessionId}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${sessionLifetimeMs / 1000}`,
-    });
+    await handleLogin(request, response);
     return;
   }
 
